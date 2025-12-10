@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Task Manager</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>📝 My Task Manager</h1>
+
+        <!-- Search form -->
+        <form action="/tasks/search" method="GET" class="search-form">
+            <input type="text" name="q" placeholder="Search tasks..." class="search-input">
+            <button type="submit" class="btn btn-primary">Search</button>
+            <a href="/tasks" class="btn btn-secondary">Show All</a>
+        </form>
+
+        <!-- Filter buttons -->
+        <div class="filter-buttons">
+            <a href="/tasks" class="btn btn-secondary">All</a>
+            <a href="/tasks/filter/pending" class="btn btn-secondary">⏳ Pending</a>
+            <a href="/tasks/filter/completed" class="btn btn-secondary">✓ Completed</a>
+        </div>
+        <!-- Category filter buttons -->
+        <a href="/tasks/category/Work" class="btn btn-secondary">Work</a>
+<a href="/tasks/category/Personal" class="btn btn-secondary">Personal</a>
+<a href="/tasks/category/Shopping" class="btn btn-secondary">Shopping</a>
+<a href="/tasks/category/Other" class="btn btn-secondary">Other</a>
+
+<small>Category: <%= task.category %></small>
+<!-- Priority filter buttons -->
+ <a href="/tasks/category/priority/Low" class="btn btn-secondary">Low</a>
+<a href="/tasks/category/priority/Medium" class="btn btn-secondary">Medium</a>
+<a href="/tasks/category/priority/High" class="btn btn-secondary">High</a>
+<small>Priority: <%= task.priority %></small>
+
+        <!-- Stats section -->
+        <div class="stats">
+            <div class="stat-box">
+                <h3><%= tasks.length %></h3>
+                <p>Total Tasks</p>
+            </div>
+            <div class="stat-box">
+                <h3><%= tasks.filter(t => t.completed).length %></h3>
+                <p>Completed</p>
+            </div>
+            <div class="stat-box">
+                <h3><%= tasks.filter(t => !t.completed).length %></h3>
+                <p>Pending</p>
+            </div>
+        </div>
+
+        <a href="/tasks/new" class="btn btn-primary">+ Add New Task</a>
+
+        <div class="tasks-section">
+            <h2>My Tasks</h2>
+
+            <% if (tasks.length === 0) { %>
+                <p class="no-tasks">No tasks yet! Click "Add New Task" to get started.</p>
+            <% } else { %>
+                <% tasks.forEach(task => { %>
+                    <div class="task-card <%= task.completed ? 'completed' : '' %> <%= task.dueDate && new Date(task.dueDate) < new Date() && !task.completed ? 'overdue' : '' %>">
+                        <div class="task-info">
+                            <h3><%= task.title %></h3>
+                            <p><%= task.description %></p>
+                            <small>Created: <%= task.createdAt ? task.createdAt.toDateString() : 'N/A' %></small>
+                            <% if (task.dueDate) { %>
+                                <br><small>Due: <%= new Date(task.dueDate).toDateString() %></small>
+                            <% } %>
+                        </div>
+                        <div class="task-actions">
+                            <a href="/tasks/<%= task._id %>/edit" class="btn btn-secondary">✏️ Edit</a>
+                            <% if (!task.completed) { %>
+                                <form action="/tasks/<%= task._id %>/complete" method="POST" style="display: inline;">
+                                    <button type="submit" class="btn btn-success">✓ Complete</button>
+                                </form>
+                            <% } %>
+                            <form action="/tasks/<%= task._id %>/delete" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-danger">🗑️ Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                <% }); %>
+            <% } %>
+        </div>
+    </div>
+</body>
+</html>
