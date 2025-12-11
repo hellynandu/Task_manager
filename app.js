@@ -8,10 +8,6 @@ const User = require('./models/user');
 const Task = require('./models/Task');
 const { isLoggedIn } = require('./middleware/auth');
 
-// ...existing code...
-
-// ...existing code...
-
 const app = express();
 const PORT = 3000;
 
@@ -64,7 +60,7 @@ app.post('/register', async (req, res) => {
         req.session.user = user;
         res.redirect('/tasks');
     } catch (err) {
-        res.send(err.message);
+        res.status(500).send(`Registration error: ${err.message}`);
     }
 });
 
@@ -75,16 +71,20 @@ app.get('/login', (req, res) => {
 
 // HANDLE LOGIN
 app.post('/login', async (req, res) => {
-    const { email, password } = req.body;
+    try {
+        const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user) return res.send("User not found");
+        const user = await User.findOne({ email });
+        if (!user) return res.send("User not found");
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.send("Incorrect password");
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) return res.send("Incorrect password");
 
-    req.session.user = user;
-    res.redirect('/tasks');
+        req.session.user = user;
+        res.redirect('/tasks');
+    } catch (err) {
+        res.status(500).send(`Login error: ${err.message}`);
+    }
 });
 
 // LOGOUT
@@ -103,8 +103,12 @@ app.get('/', (req, res) => {
 
 // SHOW ALL TASKS (user-specific)
 app.get('/tasks', isLoggedIn, async (req, res) => {
-    const tasks = await Task.find({ userId: req.session.user._id }).sort({ createdAt: -1 });
-    res.render('home', { tasks });
+    try {
+        const tasks = await Task.find({ userId: req.session.user._id }).sort({ createdAt: -1 });
+        res.render('home', { tasks });
+    } catch (err) {
+        res.status(500).send(`Error loading tasks: ${err.message}`);
+    }
 });
 
 // ADD NEW TASK PAGE
@@ -114,58 +118,98 @@ app.get('/tasks/new', isLoggedIn, (req, res) => {
 
 // CREATE TASK
 app.post('/tasks/create', isLoggedIn, async (req, res) => {
-    const { title, description, dueDate, category, priority } = req.body;
+    try {
+        const { title, description, dueDate, category, priority } = req.body;
 
-    await Task.create({
-        title,
-        description,
-        dueDate: dueDate ? new Date(dueDate) : undefined,
-        category,
-        priority,
-        userId: req.session.user._id
-    });
+        await Task.create({
+            title,
+            description,
+            dueDate: dueDate ? new Date(dueDate) : undefined,
+            category,
+            priority,
+            userId: req.session.user._id
+        });
 
-    res.redirect('/tasks');
+        res.redirect('/tasks');
+    } catch (err) {
+        res.status(500).send(`Error creating task: ${err.message}`);
+    }
 });
 
 // COMPLETE TASK
 app.post('/tasks/:id/complete', isLoggedIn, async (req, res) => {
-    await Task.findOneAndUpdate(
-        { _id: req.params.id, userId: req.session.user._id },
-        { completed: true }
-    );
-    res.redirect('/tasks');
+    try {
+        await Task.findOneAndUpdate(
+            { _id: req.params.id, userId: req.session.user._id },
+            { completed: true }
+        );
+        res.redirect('/tasks');
+    } catch (err) {
+        res.status(500).send(`Error completing task: ${err.message}`);
+    }
 });
 
 // DELETE TASK
 app.post('/tasks/:id/delete', isLoggedIn, async (req, res) => {
-    await Task.deleteOne({ _id: req.params.id, userId: req.session.user._id });
-    res.redirect('/tasks');
+    try {
+        await Task.deleteOne({ _id: req.params.id, userId: req.session.user._id });
+        res.redirect('/tasks');
+    } catch (err) {
+        res.status(500).send(`Error deleting task: ${err.message}`);
+    }
 });
 
 // EDIT TASK PAGE
 app.get('/tasks/:id/edit', isLoggedIn, async (req, res) => {
-    const task = await Task.findOne({ _id: req.params.id, userId: req.session.user._id });
-    res.render('editTask', { task });
+    try {
+        const task = await Task.findOne({ _id: req.params.id, userId: req.session.user._id });
+        res.render('editTask', { task });
+    } catch (err) {
+        res.status(500).send(`Error loading task: ${err.message}`);
+    }
 });
 
 // UPDATE TASK
 app.post('/tasks/:id/update', isLoggedIn, async (req, res) => {
-    const { title, description, completed, dueDate, category, priority } = req.body;
+    try {
+        const { title, description, completed, dueDate, category, priority } = req.body;
 
-    await Task.findOneAndUpdate(
-        { _id: req.params.id, userId: req.session.user._id },
-        {
-            title,
-            description,
-            completed: completed === "on",
-            dueDate: dueDate ? new Date(dueDate) : undefined,
-            category,
-            priority
+        await Task.findOneAndUpdate(
+            { _id: req.params.id, userId: req.session.user._id },
+            {
+                title,
+                description,
+                completed: completed === "on",
+                dueDate: dueDate ? new Date(dueDate) : undefined,
+                category,
+                priority
+            }
+        );
+
+        res.redirect('/tasks');
+    } catch (err) {
+        res.status(500).send(`Error updating task: ${err.message}`);
+    }
+});
+
+// SEARCH TASKS
+app.get('/tasks/search', isLoggedIn, async (req, res) => {
+    try {
+        const query = req.query.q;
+        if (!query) {
+            return res.redirect('/tasks');
         }
-    );
-
-    res.redirect('/tasks');
+        const tasks = await Task.find({
+            userId: req.session.user._id,
+            $or: [
+                { title: new RegExp(query, 'i') },
+                { description: new RegExp(query, 'i') }
+            ]
+        }).sort({ createdAt: -1 });
+        res.render('home', { tasks });
+    } catch (err) {
+        res.status(500).send(`Error searching tasks: ${err.message}`);
+    }
 });
 
 // START SERVER
