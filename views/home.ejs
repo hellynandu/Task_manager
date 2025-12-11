@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Task Manager</title>
     <link rel="stylesheet" href="/style.css">
 </head>
+
 <body>
     <div class="container">
         <h1>📝 My Task Manager</h1>
@@ -37,15 +39,21 @@
         <!-- Stats section -->
         <div class="stats">
             <div class="stat-box">
-                <h3><%= tasks.length %></h3>
+                <h3>
+                    <%= tasks.length %>
+                </h3>
                 <p>Total Tasks</p>
             </div>
             <div class="stat-box">
-                <h3><%= tasks.filter(t => t.completed).length %></h3>
+                <h3>
+                    <%= tasks.filter(t=> t.completed).length %>
+                </h3>
                 <p>Completed</p>
             </div>
             <div class="stat-box">
-                <h3><%= tasks.filter(t => !t.completed).length %></h3>
+                <h3>
+                    <%= tasks.filter(t=> !t.completed).length %>
+                </h3>
                 <p>Pending</p>
             </div>
         </div>
@@ -57,40 +65,45 @@
         <div class="tasks-section">
             <h2>My Tasks</h2>
 
-            <% if (tasks.length === 0) { %>
+            <% if (tasks.length===0) { %>
                 <p class="no-tasks">No tasks yet! Click "Add New Task" to get started.</p>
-            <% } else { %>
-                <% tasks.forEach(function(task) { %>
-                    <div class="task-card <%= task.completed ? 'completed' : '' %> <%= task.dueDate && new Date(task.dueDate) < new Date() && !task.completed ? 'overdue' : '' %>">
-                        <div class="task-info">
-                            <h3><%= task.title %></h3>
-                            <p><%= task.description %></p>
-                            <small>Created: <%= task.createdAt ? task.createdAt.toDateString() : 'N/A' %></small>
-                            <% if (task.dueDate) { %>
-                                <br><small>Due: <%= new Date(task.dueDate).toDateString() %></small>
-                            <% } %>
-                            <% if (task.category) { %>
-                                <br><small>Category: <%= task.category %></small>
-                            <% } %>
-                            <% if (task.priority) { %>
-                                <br><small>Priority: <%= task.priority %></small>
-                            <% } %>
+                <% } else { %>
+                    <% tasks.forEach(function(task) { %>
+                        <div class="task-card <%= task.completed ? 'completed' : '' %> <%= task.dueDate && new Date(task.dueDate) < new Date() && !task.completed ? 'overdue' : '' %>">
+                            <div class="task-info">
+                                <h3>
+                                    <%= task.title %>
+                                </h3>
+                                <p>
+                                    <%= task.description %>
+                                </p>
+                                <small>Created: <%= task.createdAt ? task.createdAt.toDateString() : 'N/A' %></small>
+                                <% if (task.dueDate) { %>
+                                    <br><small>Due: <%= new Date(task.dueDate).toDateString() %></small>
+                                    <% } %>
+                                        <% if (task.category) { %>
+                                            <br><small>Category: <%= task.category %></small>
+                                            <% } %>
+                                                <% if (task.priority) { %>
+                                                    <br><small>Priority: <%= task.priority %></small>
+                                                    <% } %>
+                            </div>
+                            <div class="task-actions">
+                                <a href="/tasks/<%= task._id %>/edit" class="btn btn-secondary">✏️ Edit</a>
+                                <% if (!task.completed) { %>
+                                    <form action="/tasks/<%= task._id %>/complete" method="POST" style="display: inline;">
+                                        <button type="submit" class="btn btn-success">✓ Complete</button>
+                                    </form>
+                                    <% } %>
+                                        <form action="/tasks/<%= task._id %>/delete" method="POST" style="display: inline;">
+                                            <button type="submit" class="btn btn-danger">🗑️ Delete</button>
+                                        </form>
+                            </div>
                         </div>
-                        <div class="task-actions">
-                            <a href="/tasks/<%= task._id %>/edit" class="btn btn-secondary">✏️ Edit</a>
-                            <% if (!task.completed) { %>
-                                <form action="/tasks/<%= task._id %>/complete" method="POST" style="display: inline;">
-                                    <button type="submit" class="btn btn-success">✓ Complete</button>
-                                </form>
+                        <% }); %>
                             <% } %>
-                            <form action="/tasks/<%= task._id %>/delete" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-danger">🗑️ Delete</button>
-                            </form>
-                        </div>
-                    </div>
-                <% }); %>
-            <% } %>
         </div>
     </div>
 </body>
+
 </html>

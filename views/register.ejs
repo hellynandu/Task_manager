@@ -8,25 +8,59 @@
 <div class="container">
     <h1>Create Account</h1>
 
-    <form method="POST" action="/register">
+    <form onsubmit="registerUser(event)">
         <div class="form-group">
             <label>Name</label>
-            <input name="name" required>
+            <input id="name" name="name" required>
         </div>
 
         <div class="form-group">
             <label>Email</label>
-            <input name="email" type="email" required>
+            <input id="email" name="email" type="email" required>
         </div>
 
         <div class="form-group">
             <label>Password</label>
-            <input name="password" type="password" required>
+            <input id="password" name="password" type="password" required>
         </div>
 
-        <button class="btn btn-primary">Register</button>
+        <button type="submit" class="btn btn-primary">Register</button>
         <a href="/login" class="btn btn-secondary">Login</a>
     </form>
 </div>
+
+<script>
+async function registerUser(event) {
+    event.preventDefault();
+
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!name || !email || !password) {
+        alert('All fields are required!');
+        return;
+    }
+
+    try {
+        const res = await fetch('/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, password })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            alert('Registered successfully! Redirecting to login...');
+            window.location.href = '/login';
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (err) {
+        alert('Request failed: ' + err.message);
+    }
+}
+</script>
 </body>
 </html>

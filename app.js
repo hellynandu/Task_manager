@@ -1,3 +1,6 @@
+// ...existing code...
+const jwt = require('jsonwebtoken');
+// ...existing code...
 const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
@@ -185,7 +188,6 @@ app.post('/tasks/:id/update', isLoggedIn, async (req, res) => {
                 priority
             }
         );
-
         res.redirect('/tasks');
     } catch (err) {
         res.status(500).send(`Error updating task: ${err.message}`);
@@ -211,6 +213,76 @@ app.get('/tasks/search', isLoggedIn, async (req, res) => {
         res.status(500).send(`Error searching tasks: ${err.message}`);
     }
 });
+const path = require('path');
+// ...existing code...
+
+// HANDLE REGISTER
+app.post('/register', async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+
+        const userExists = await User.findOne({ email });
+        if (userExists) return res.send("Email already exists!");
+
+        const hashed = await bcrypt.hash(password, 10);
+
+        const user = await User.create({
+            name,
+            email,
+            password: hashed
+        });
+
+        // Removed: req.session.user = user; (no auto-login)
+        res.redirect('/login');  // Changed: redirect to login instead of /tasks
+    } catch (err) {
+        res.status(500).send(`Registration error: ${err.message}`);
+    }
+});
+// ...existing code...
+
+// ======= AUTH API ROUTES =======
+
+// API REGISTER
+app.post('/auth/register', async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+
+        const userExists = await User.findOne({ email });
+        if (userExists) return res.status(400).json({ error: "Email already exists!" });
+
+        const hashed = await bcrypt.hash(password, 10);
+
+        const user = await User.create({
+            name,
+            email,
+            password: hashed
+        });
+
+        res.json({ message: "User registered successfully" });
+    } catch (err) {
+        res.status(500).json({ error: `Registration error: ${err.message}` });
+    }
+});
+
+// API LOGIN
+app.post('/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        const user = await User.findOne({ email });
+        if (!user) return res.status(400).json({ error: "User not found" });
+
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) return res.status(400).json({ error: "Incorrect password" });
+
+        const token = jwt.sign({ userId: user._id }, 'supersecret123', { expiresIn: '1d' });
+        res.json({ token });
+    } catch (err) {
+        res.status(500).json({ error: `Login error: ${err.message}` });
+    }
+});
+
+// ...existing code...
 
 // START SERVER
 app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
