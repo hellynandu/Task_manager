@@ -25,16 +25,14 @@
         </div>
         <!-- Category filter buttons -->
         <a href="/tasks/category/Work" class="btn btn-secondary">Work</a>
-<a href="/tasks/category/Personal" class="btn btn-secondary">Personal</a>
-<a href="/tasks/category/Shopping" class="btn btn-secondary">Shopping</a>
-<a href="/tasks/category/Other" class="btn btn-secondary">Other</a>
+        <a href="/tasks/category/Personal" class="btn btn-secondary">Personal</a>
+        <a href="/tasks/category/Shopping" class="btn btn-secondary">Shopping</a>
+        <a href="/tasks/category/Other" class="btn btn-secondary">Other</a>
 
-<small>Category: <%= task.category %></small>
-<!-- Priority filter buttons -->
- <a href="/tasks/category/priority/Low" class="btn btn-secondary">Low</a>
-<a href="/tasks/category/priority/Medium" class="btn btn-secondary">Medium</a>
-<a href="/tasks/category/priority/High" class="btn btn-secondary">High</a>
-<small>Priority: <%= task.priority %></small>
+        <!-- Priority filter buttons -->
+        <a href="/tasks/category/priority/Low" class="btn btn-secondary">Low</a>
+        <a href="/tasks/category/priority/Medium" class="btn btn-secondary">Medium</a>
+        <a href="/tasks/category/priority/High" class="btn btn-secondary">High</a>
 
         <!-- Stats section -->
         <div class="stats">
@@ -53,6 +51,8 @@
         </div>
 
         <a href="/tasks/new" class="btn btn-primary">+ Add New Task</a>
+        <a href="/logout" class="btn btn-danger">Logout</a>
+
 
         <div class="tasks-section">
             <h2>My Tasks</h2>
@@ -60,7 +60,7 @@
             <% if (tasks.length === 0) { %>
                 <p class="no-tasks">No tasks yet! Click "Add New Task" to get started.</p>
             <% } else { %>
-                <% tasks.forEach(task => { %>
+                <% tasks.forEach(function(task) { %>
                     <div class="task-card <%= task.completed ? 'completed' : '' %> <%= task.dueDate && new Date(task.dueDate) < new Date() && !task.completed ? 'overdue' : '' %>">
                         <div class="task-info">
                             <h3><%= task.title %></h3>
@@ -68,6 +68,12 @@
                             <small>Created: <%= task.createdAt ? task.createdAt.toDateString() : 'N/A' %></small>
                             <% if (task.dueDate) { %>
                                 <br><small>Due: <%= new Date(task.dueDate).toDateString() %></small>
+                            <% } %>
+                            <% if (task.category) { %>
+                                <br><small>Category: <%= task.category %></small>
+                            <% } %>
+                            <% if (task.priority) { %>
+                                <br><small>Priority: <%= task.priority %></small>
                             <% } %>
                         </div>
                         <div class="task-actions">

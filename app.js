@@ -1,166 +1,172 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+const session = require('express-session');
+const { MongoStore } = require('connect-mongo');
+
+const User = require('./models/user');
 const Task = require('./models/Task');
+const { isLoggedIn } = require('./middleware/auth');
+
+// ...existing code...
+
+// ...existing code...
 
 const app = express();
 const PORT = 3000;
 
-// Connect to MongoDB
+// CONNECT MONGODB
 mongoose.connect('mongodb://localhost:27017/taskmanager')
-    .then(() => console.log('✅ Connected to MongoDB'))
-    .catch(err => console.log('❌ MongoDB connection error:', err));
+    .then(() => console.log('Connected to MongoDB'))
+    .catch(err => console.log(err));
 
-// Middleware
+// MIDDLEWARE
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static('public'));
+
+app.use(session({
+    secret: "supersecret123",
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+        mongoUrl: 'mongodb://localhost:27017/taskmanager',
+        collection: 'sessions'
+    }),
+    cookie: { maxAge: 1000 * 60 * 60 * 24 } // 1 day
+}));
+
 app.set('view engine', 'ejs');
 
-// ROUTE 1: Home page - Show all tasks
+// ======= AUTH ROUTES =======
+
+// REGISTER PAGE
+app.get('/register', (req, res) => {
+    res.render('register');
+});
+
+// HANDLE REGISTER
+app.post('/register', async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+
+        const userExists = await User.findOne({ email });
+        if (userExists) return res.send("Email already exists!");
+
+        const hashed = await bcrypt.hash(password, 10);
+
+        const user = await User.create({
+            name,
+            email,
+            password: hashed
+        });
+
+        req.session.user = user;
+        res.redirect('/tasks');
+    } catch (err) {
+        res.send(err.message);
+    }
+});
+
+// LOGIN PAGE
+app.get('/login', (req, res) => {
+    res.render('login');
+});
+
+// HANDLE LOGIN
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) return res.send("User not found");
+
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.send("Incorrect password");
+
+    req.session.user = user;
+    res.redirect('/tasks');
+});
+
+// LOGOUT
+app.get('/logout', (req, res) => {
+    req.session.destroy(() => {
+        res.redirect('/login');
+    });
+});
+
+// ======= PROTECTED TASK ROUTES =======
+
+// HOME REDIRECT
 app.get('/', (req, res) => {
     res.redirect('/tasks');
 });
 
-app.get('/tasks', async (req, res) => {
-    try {
-        const tasks = await Task.find().sort({ createdAt: -1 });
-        res.render('home', { tasks });
-    } catch (error) {
-        res.status(500).send('Error fetching tasks: ' + error.message);
-    }
+// SHOW ALL TASKS (user-specific)
+app.get('/tasks', isLoggedIn, async (req, res) => {
+    const tasks = await Task.find({ userId: req.session.user._id }).sort({ createdAt: -1 });
+    res.render('home', { tasks });
 });
 
-// ROUTE 2: Show add task form
-app.get('/tasks/new', (req, res) => {
+// ADD NEW TASK PAGE
+app.get('/tasks/new', isLoggedIn, (req, res) => {
     res.render('addTask');
 });
 
-// ROUTE 3: Create new task
-app.post('/tasks/create', async (req, res) => {
-    try {
-        const { title, description, dueDate } = req.body;
-        await Task.create({ title, description, dueDate });
-        res.redirect('/tasks');
-    } catch (error) {
-        res.status(500).send('Error creating task: ' + error.message);
-    }
+// CREATE TASK
+app.post('/tasks/create', isLoggedIn, async (req, res) => {
+    const { title, description, dueDate, category, priority } = req.body;
+
+    await Task.create({
+        title,
+        description,
+        dueDate: dueDate ? new Date(dueDate) : undefined,
+        category,
+        priority,
+        userId: req.session.user._id
+    });
+
+    res.redirect('/tasks');
 });
 
-// ROUTE 4: Mark task as complete
-app.post('/tasks/:id/complete', async (req, res) => {
-    try {
-        await Task.findByIdAndUpdate(req.params.id, { completed: true });
-        res.redirect('/tasks');
-    } catch (error) {
-        res.status(500).send('Error completing task: ' + error.message);
-    }
+// COMPLETE TASK
+app.post('/tasks/:id/complete', isLoggedIn, async (req, res) => {
+    await Task.findOneAndUpdate(
+        { _id: req.params.id, userId: req.session.user._id },
+        { completed: true }
+    );
+    res.redirect('/tasks');
 });
 
-// ROUTE 5: Delete task
-app.post('/tasks/:id/delete', async (req, res) => {
-    try {
-        await Task.findByIdAndDelete(req.params.id);
-        res.redirect('/tasks');
-    } catch (error) {
-        res.status(500).send('Error deleting task: ' + error.message);
-    }
+// DELETE TASK
+app.post('/tasks/:id/delete', isLoggedIn, async (req, res) => {
+    await Task.deleteOne({ _id: req.params.id, userId: req.session.user._id });
+    res.redirect('/tasks');
 });
 
-// ROUTE 6: Search tasks
-app.get('/tasks/search', async (req, res) => {
-    try {
-        const searchQuery = req.query.q || '';
-        const tasks = await Task.find({
-            $or: [
-                { title: { $regex: searchQuery, $options: 'i' } },
-                { description: { $regex: searchQuery, $options: 'i' } }
-            ]
-        }).sort({ createdAt: -1 });
-        res.render('home', { tasks });
-    } catch (error) {
-        res.status(500).send('Error searching tasks: ' + error.message);
-    }
+// EDIT TASK PAGE
+app.get('/tasks/:id/edit', isLoggedIn, async (req, res) => {
+    const task = await Task.findOne({ _id: req.params.id, userId: req.session.user._id });
+    res.render('editTask', { task });
 });
 
-// ROUTE 7: Filter tasks by status
-app.get('/tasks/filter/:status', async (req, res) => {
-    try {
-        const status = req.params.status;
-        let filter = {};
+// UPDATE TASK
+app.post('/tasks/:id/update', isLoggedIn, async (req, res) => {
+    const { title, description, completed, dueDate, category, priority } = req.body;
 
-        if (status === 'completed') {
-            filter.completed = true;
-        } else if (status === 'pending') {
-            filter.completed = false;
+    await Task.findOneAndUpdate(
+        { _id: req.params.id, userId: req.session.user._id },
+        {
+            title,
+            description,
+            completed: completed === "on",
+            dueDate: dueDate ? new Date(dueDate) : undefined,
+            category,
+            priority
         }
+    );
 
-        const tasks = await Task.find(filter).sort({ createdAt: -1 });
-        res.render('home', { tasks });
-    } catch (error) {
-        res.status(500).send('Error filtering tasks: ' + error.message);
-    }
+    res.redirect('/tasks');
 });
 
-// ROUTE 8: Show edit form
-app.get('/tasks/:id/edit', async (req, res) => {
-    try {
-        const task = await Task.findById(req.params.id);
-        res.render('editTask', { task });
-    } catch (error) {
-        res.status(500).send('Error loading task: ' + error.message);
-    }
-});
-
-// ROUTE 9: Update task
-app.post('/tasks/:id/update', async (req, res) => {
-    try {
-        const { title, description, completed, dueDate } = req.body;
-        await Task.findByIdAndUpdate(req.params.id, {
-            title,
-            description,
-            completed: completed === 'on',
-            dueDate
-        });
-        res.redirect('/tasks');
-    } catch (error) {
-        res.status(500).send('Error updating task: ' + error.message);
-    }
-});
-
-// ROUTE 10: Edited task
-app.post('/tasks/category/:id/Edited', async (req, res) => {
-    try {
-        const { title, description, completed, dueDate, category } = req.body;
-        await Task.findByIdAndUpdate(req.params.id, {
-            title,
-            description,
-            completed: completed === 'on',
-            category,
-        });
-        res.redirect('/tasks');
-    } catch (error) {
-        res.status(500).send('Error updating task: ' + error.message);
-    }
-});
-
-// ROUTE 11: Edited task with priority
-app.post('/tasks/category/priority/:id/Edited', async (req, res) => {
-    try {
-        const { title, description, completed, dueDate, category, priority } = req.body;
-        await Task.findByIdAndUpdate(req.params.id, {
-            title,
-            description,
-            completed: completed === 'on',
-            category,
-            priority,
-        });
-        res.redirect('/tasks');
-    } catch (error) {
-        res.status(500).send('Error updating task: ' + error.message);
-    }
-});
-
-// Start server
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-});
+// START SERVER
+app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
