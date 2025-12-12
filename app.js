@@ -37,6 +37,8 @@ app.use(session({
 
 app.set('view engine', 'ejs');
 
+/// ...existing code...
+
 // ======= AUTH ROUTES =======
 
 // REGISTER PAGE
@@ -60,12 +62,22 @@ app.post('/register', async (req, res) => {
             password: hashed
         });
 
-        req.session.user = user;
-        res.redirect('/tasks');
+        // Removed: req.session.user = user; (no auto-login)
+        res.redirect('/login');  // Changed: redirect to login instead of /tasks
     } catch (err) {
         res.status(500).send(`Registration error: ${err.message}`);
     }
 });
+
+// LOGIN PAGE
+app.get('/login', (req, res) => {
+    if (req.session.user) {
+        return res.redirect('/tasks');
+    }
+    res.render('login');
+});
+
+// ...existing code...
 
 // LOGIN PAGE
 app.get('/login', (req, res) => {
@@ -104,6 +116,23 @@ app.get('/', (req, res) => {
     res.redirect('/tasks');
 });
 
+// ...existing code...
+
+// LOGIN PAGE
+// ...existing code...
+
+// LOGIN PAGE
+app.get('/login', (req, res) => {
+    if (req.session.user) {
+        return res.redirect('/tasks');
+    }
+    res.render('login');
+});
+
+// ...existing code...
+
+
+// ...existing code...
 // SHOW ALL TASKS (user-specific)
 app.get('/tasks', isLoggedIn, async (req, res) => {
     try {
